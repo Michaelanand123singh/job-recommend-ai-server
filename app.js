@@ -15,9 +15,19 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
-    credentials: true
+    origin: [
+        'http://localhost:3000', 
+        'http://localhost:3001',
+        'https://job-recommend-ai-client.vercel.app',  // Your Vercel frontend URL
+        'https://job-recomend-ai-backend.onrender.com',  // Your Python backend URL
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -45,7 +55,9 @@ app.get('/health', (req, res) => {
     res.json({ 
         status: 'healthy', 
         timestamp: new Date().toISOString(),
-        service: 'Job Recommender Express Server'
+        service: 'Job Recommender Express Server',
+        environment: process.env.NODE_ENV || 'development',
+        python_backend_url: process.env.PYTHON_BACKEND_URL || 'http://localhost:8000'
     });
 });
 
@@ -54,12 +66,20 @@ app.get('/', (req, res) => {
     res.json({
         message: 'Job Recommender API Server',
         version: '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
         endpoints: {
             upload: 'POST /api/upload',
             jobs: 'GET /api/jobs',
             health: 'GET /health',
-            test: 'GET /api/test'
-        }
+            test: 'GET /api/test',
+            recommendations: 'POST /api/recommendations'
+        },
+        cors_origins: [
+            'http://localhost:3000',
+            'http://localhost:3001', 
+            'https://job-recommend-ai-client.vercel.app',
+            'https://job-recomend-ai-backend.onrender.com'
+        ]
     });
 });
 
@@ -68,7 +88,8 @@ app.use((err, req, res, next) => {
     console.error('Error:', err.stack);
     res.status(500).json({
         error: 'Something went wrong!',
-        message: err.message
+        message: err.message,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
 });
 
@@ -76,7 +97,16 @@ app.use((err, req, res, next) => {
 app.use('*', (req, res) => {
     res.status(404).json({
         error: 'Route not found',
-        path: req.originalUrl
+        path: req.originalUrl,
+        method: req.method,
+        available_routes: [
+            'GET /',
+            'GET /health',
+            'GET /api/test',
+            'POST /api/upload',
+            'GET /api/jobs',
+            'POST /api/recommendations'
+        ]
     });
 });
 
