@@ -29,7 +29,7 @@ const jobController = {
                 }
             );
             
-            // Cleanup file
+            // Cleanup file`
             fs.unlink(fileInfo.path, (err) => {
                 if (err) console.error('Cleanup error:', err);
             });
